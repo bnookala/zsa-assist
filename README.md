@@ -15,23 +15,28 @@ layer transitions.
 
 ## Current state
 
-Stub poller only — no gRPC, no UI yet.
+Working poller against real hardware — no UI yet.
 
 - `ZSAAssistCore`
-  - `KeymappClient` — protocol the real gRPC client will implement.
+  - `KeymappClient` — protocol both clients implement.
   - `StubKeymappClient` — simulates layer holds on a repeating schedule.
   - `LayerPoller` — polls a client every 50 ms and emits `connected` /
     `layerChanged` / `connectionLost` events as an `AsyncStream`.
+- `KeymappGRPC`
+  - `GRPCKeymappClient` — real client over Keymapp's Unix domain socket
+    (`$KEYMAPP_SOCKET`, `~/Library/Application Support/.keymapp/keymapp.sock`,
+    or the App Store container path). Stubs are generated at build time from
+    the vendored `keymapp.proto` (requires `protoc`: `brew install protobuf`).
 - `zsa-poller-demo` — prints the event stream:
 
 ```
-swift run zsa-poller-demo 6   # run for ~6 seconds (omit for Ctrl-C)
+swift run zsa-poller-demo 6          # real Keymapp, ~6 seconds (omit for Ctrl-C)
+swift run zsa-poller-demo 6 --stub   # simulated layer holds
 swift test
 ```
 
 ## Next steps
 
-1. Real `KeymappClient` backed by grpc-swift + `keymapp.proto` from Kontroll.
-2. Menu-bar app with a non-activating, click-through `NSPanel` overlay
+1. Menu-bar app with a non-activating, click-through `NSPanel` overlay
    driven by `LayerPoller.events()`.
-3. Layout data from Oryx (GraphQL) rendered as per-layer keyboard SVGs.
+2. Layout data from Oryx (GraphQL) rendered as per-layer keyboard SVGs.
