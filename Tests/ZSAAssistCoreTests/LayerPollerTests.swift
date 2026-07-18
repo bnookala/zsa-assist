@@ -52,6 +52,18 @@ private func collect(_ poller: LayerPoller, count: Int) async -> [LayerEvent] {
     #expect(events[2] == .connected(KeyboardStatus(friendlyName: "Test", currentLayer: 3)))
 }
 
+@Test func reportsInitialFailureOnceThenConnects() async {
+    let client = ScriptedClient(layers: [nil, nil, nil, 2])
+    let poller = LayerPoller(client: client, interval: .milliseconds(1))
+    let events = await collect(poller, count: 2)
+    guard case .connectionLost = events[0] else {
+        Issue.record("expected connectionLost, got \(events[0])")
+        return
+    }
+    // Repeated failures must not repeat the event: the next one is connected.
+    #expect(events[1] == .connected(KeyboardStatus(friendlyName: "Test", currentLayer: 2)))
+}
+
 @Test func stubClientFollowsSchedule() async throws {
     let client = StubKeymappClient(schedule: [
         .init(layer: 0, seconds: 0.05),

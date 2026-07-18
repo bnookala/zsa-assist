@@ -4,7 +4,8 @@ public enum LayerEvent: Sendable, Equatable {
     case connected(KeyboardStatus)
     /// The active layer changed between two consecutive polls.
     case layerChanged(from: Int, to: Int)
-    /// A status call failed after we had been connected.
+    /// A status call failed — after we had been connected, or on the first
+    /// attempt (emitted once per outage, not once per failed poll).
     case connectionLost(description: String)
 }
 
@@ -26,6 +27,7 @@ public struct LayerPoller: Sendable {
         AsyncStream { continuation in
             let task = Task {
                 var lastLayer: Int?
+                var reportedDown = false
                 while !Task.isCancelled {
                     do {
                         let status = try await client.status()
@@ -35,11 +37,13 @@ public struct LayerPoller: Sendable {
                             continuation.yield(.layerChanged(from: last, to: status.currentLayer))
                         }
                         lastLayer = status.currentLayer
+                        reportedDown = false
                     } catch {
-                        if lastLayer != nil {
-                            lastLayer = nil
+                        if lastLayer != nil || !reportedDown {
                             continuation.yield(.connectionLost(description: String(describing: error)))
                         }
+                        lastLayer = nil
+                        reportedDown = true
                     }
                     do {
                         try await Task.sleep(for: interval)
